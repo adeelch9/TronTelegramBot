@@ -41,12 +41,6 @@ Go to you bot on telegram and send /start to get the usage instructions.
 
 ## Contributing
 
- If you want others to contribute to your project, you can add a section on how to do so. This can include information on how to submit pull requests, report issues, and more.
-
-Here's an example of what your expanded README file could look like:
-
-## Contributing
-
 If you'd like to contribute to this project, please submit a pull request with your changes. You can also report any issues you encounter.
 
 Feel free to add or remove sections as necessary to fit your project's needs!
