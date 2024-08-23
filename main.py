@@ -443,20 +443,27 @@ async def swap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     
     provider = AsyncHTTPProvider(CONF_MAINNET, client=_http_client)
     client = AsyncTron(provider=provider)
+    client2 = Tron(HTTPProvider(api_key=TRON_GRID_API_KEY), network='mainnet')
     
-    if(len(context.args)!= 3):
-            await update.message.reply_text(
+
+
+    if len(context.args) != 3:
+        await update.message.reply_text(
             "Usage: /swap <token_address> <token_address> <amount>",
-                reply_markup=ReplyKeyboardRemove(),
-            )
-            return
+
+
+
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
         
     token_address_1 = context.args[0]
     token_address_2 = context.args[1]
     amount = context.args[2]   
     
     try:
-        if(client.is_address(token_address_1) == False or client.is_address(token_address_2) == False):
+
+        if not client.is_address(token_address_1) or not client.is_address(token_address_2):
             await update.message.reply_text(
                 "🔐 <strong>Invalid token address!</strong> 🔐\n",
                 parse_mode="HTML"
@@ -469,7 +476,8 @@ async def swap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         )
         return
     
-    if(token_address_1 == token_address_2):
+
+    if token_address_1 == token_address_2:
         await update.message.reply_text(
             "🔐 <strong>You cannot swap the same token!</strong> 🔐\n",
             parse_mode="HTML"
@@ -477,7 +485,8 @@ async def swap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         return
     
     
-    if(amount.isdigit() == False):
+
+    if not amount.isnumeric():
         await update.message.reply_text(
             "🔐 <strong>Invalid amount!</strong> 🔐\n",
             parse_mode="HTML"
@@ -506,20 +515,56 @@ async def swap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             
         await conn.close()
         
-        #USDD-USDT pool
-        cntr = await client.get_contract("TXk8rQSAvPvBBNtqSoY6nCfsXWCSSpTVQF")
+        #Smart Router
+        private_key = PrivateKey.fromhex(priv_key)
         
+        # Smart Router endpoint
+        url = 'https://rot.endjgfsv.link/swap/router'
         
-        print(dir(cntr.functions))
-        # #USDJ-TUSD-USDT 
-        # cntr1 = await client.get_contract("TKcEU8ekq2ZoFzLSGFYCUY6aocJBX9X31b")
-        # print(dir(cntr1.functions.tokens().call()))
-        
-        # #USDC pool
-        # cntr2 = await client.get_contract("TNTfaTpkdd4AQDeqr8SGG7tgdkdjdhbP5c")
-        # print(dir(cntr2.functions.owner().call()))
+        params = {
+            'fromToken': token_address_1,
+            'toToken': token_address_2,
+            'amountIn': str(int(amount) * 1000000),
+            'typeList': 'PSM,CURVE,CURVE_COMBINATION,WTRX,SUNSWAP_V1,SUNSWAP_V2,SUNSWAP_V3'
+        }
 
+        # Make the GET request
+        response = requests.get(url, params=params)
+        best_outcome = None
+        # Check if the request was successful
+        if response.status_code == 200:
+            swap_info = response.json()
+            print(f"Swap Info: {swap_info}")
+            best_outcome = get_best_price(swap_info)
+            print(f"Best Outcome: {best_outcome}")
+        else:
+            print(f"Request failed with status code {response.status_code}")
         
+       
+        contract = client2.get_contract("TFVisXFaijZfeyeSjCEVkHfex7HGdTxzF9")
+        
+        print(f"Contract: {contract.functions.swapExactInput(best_outcome['tokens'], best_outcome['poolVersions'], [len(best_outcome['poolVersions']) - 1], best_outcome['poolFees'], (best_outcome['amountIn'], '1', address, '1662825600'))}")
+        
+        txn = (
+             contract.functions.swapExactInput(
+                best_outcome['tokens'],
+                best_outcome['poolVersions'],
+                [len(best_outcome['poolVersions']) - 1],
+                best_outcome['poolFees'],
+                (best_outcome['amountIn'], '1', address, '1662825600'),
+            )
+        )
+        # print(f"Transaction: {txn}")
+        
+        # txn = await txb.build()
+        # print(txn)
+        # txn_ret = await txn.sign(priv_key).broadcast()
+
+        # print(txn_ret)
+        # print(await txn_ret.wait())
+        # await client.close()
+        
+    
         await update.message.reply_text(
             f"🔐 <strong>Swap Info</strong> 🔐\n\n"
             f"📍 <strong>Sender Address:</strong> \n{address}\n\n"
@@ -533,14 +578,25 @@ async def swap(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         # User doesn't exist, return an error message
         await update.message.reply_text(
             "🔐 <strong>Something went wrong!</strong> 🔐\n\n"
-            f" - Use /swap <address> address> <amount> to swap tokens.\n"
+
+            f" - Use /swap <address> <address> <amount> to swap tokens.\n"
             f" - Check if the address/amount is correct and try again.\n"
             f" - Make sure you have created a wallet and have enough balance in your wallet.\n",
             parse_mode="HTML"
         )
         return
+def get_best_price(swap_data):
+    best_option = None
+    max_amount_out = 0
+    
+    for option in swap_data['data']:
+        amount_out = float(option['amountOut'])
+        if amount_out > max_amount_out:
+            max_amount_out = amount_out
+            best_option = option
+    
+    return best_option
 
-                
 def main() -> None:
     """Run the bot."""
     # Create the Application and pass it your bot's token.
