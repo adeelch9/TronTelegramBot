@@ -31,6 +31,14 @@ Configure your telgram bot using BotFather.
 
 Run `python3 main.py`  in project directory.
 
+Go to you bot on telegram and send /start to get the usage instructions.
+- Use /wallet to get your wallet address and private key.
+- Use /balance to check your total balance in TRX.
+- Use /tokenbalance <token_symbol>/<token_name> to check your balance of tokens.
+- Use /transfer <receiver_address> <amount> to transfer tokens to another address.
+- Use /swap <currency1> <currency2> <amount> to swap tokens. (inprogress)
+- Use /copytrade <address> to start copy trading the transactions of the specified address. (inprogress)
+
 ## Contributing
 
  If you want others to contribute to your project, you can add a section on how to do so. This can include information on how to submit pull requests, report issues, and more.
