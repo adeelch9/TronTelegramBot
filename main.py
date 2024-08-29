@@ -51,10 +51,11 @@ async def start_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         "- Use /tokenbalance <token_symbol>/<token_name> to check your balance of tokens.\n"
         "- Use /transfer <receiver_address> <amount> to transfer tokens to another address.\n"
         "- Use /swap <currency1> <currency2> <amount> to swap tokens.\n"
-        "- Use /copytrade <address> to start copy trading the transactions of the specified address.\n"
         "- Use /getmemecoininfo <address> to get the info of the memecoins.\n"
         "- Use /getwalletinfo <address> to get your wallet info.\n"
+        "- Use /getwallettransfers <address> <token_address> to get an wallet address's tokens transfers.\n"
     )
+
     await update.message.reply_text(msg)
 
 
@@ -815,6 +816,76 @@ async def get_wallet_info(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             f"Error fetching wallet data: {response.status_code}",
             reply_markup=ReplyKeyboardRemove()
         )
+        
+async def get_wallet_transfers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if len(context.args) != 2:
+        await update.message.reply_text(
+            "Usage: /getwallettransfers <wallet_address> <token_address>",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+    
+    wallet_address = context.args[0]
+    token_address = context.args[1]
+    
+    if not client.is_address(wallet_address) or not client.is_address(token_address):
+        await update.message.reply_text(
+            "Invalid wallet or token address",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+    
+    url = f"https://apilist.tronscanapi.com/api/token_trc20/transfers-with-status?limit=30&start=0&address={wallet_address}&trc20Id={token_address}&reverse=true"
+    
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        data = response.json()
+        transactions = data.get('data', [])
+        token_info = data.get('tokenInfo', {})
+        
+        formatted_message = f"🔐 <strong>Recent Transactions for {wallet_address}</strong> 🔐\n\n"
+        formatted_message += f"🪙 <strong>Token:</strong> {token_info.get('tokenName', 'N/A')} ({token_info.get('tokenAbbr', 'N/A')})\n"
+        formatted_message += f"📍 <strong>Token Address:</strong> {token_info.get('tokenId', 'N/A')}\n"
+        formatted_message += f"🏭 <strong>Issuer:</strong> {token_info.get('issuerAddr', 'N/A')}\n\n"
+        
+        if transactions:
+            for tx in transactions:
+                tx_hash = tx.get('hash', 'N/A')
+                from_address = tx.get('from', 'N/A')
+                to_address = tx.get('to', 'N/A')
+                amount = float(tx.get('amount', 0)) / 10**int(tx.get('decimals', 18))
+                timestamp = tx.get('block_timestamp', 'N/A')
+                status = tx.get('final_result', 'N/A')
+                contract_ret = tx.get('contract_ret', 'N/A')
+                
+                if timestamp != 'N/A':
+                    formatted_time = datetime.fromtimestamp(int(timestamp)/1000, tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
+                else:
+                    formatted_time = 'N/A'
+                
+                formatted_message += f"📊 <strong>Transaction:</strong> <a href='https://tronscan.org/#/transaction/{tx_hash}'>{tx_hash[:8]}...{tx_hash[-8:]}</a>\n"
+                formatted_message += f"⏰ <strong>Time:</strong> {formatted_time}\n"
+                formatted_message += f"📤 <strong>From:</strong> {from_address[:8]}...{from_address[-8:]}\n"
+                formatted_message += f"📥 <strong>To:</strong> {to_address[:8]}...{to_address[-8:]}\n"
+                formatted_message += f"💰 <strong>Amount:</strong> {amount:,.6f} {token_info.get('tokenAbbr', 'N/A')}\n"
+                formatted_message += f"🚦 <strong>Status:</strong> {status}\n"
+                formatted_message += f"📝 <strong>Contract Result:</strong> {contract_ret}\n"
+                formatted_message += f"🧱 <strong>Block:</strong> {tx.get('block', 'N/A')}\n\n"
+        else:
+            formatted_message += "No recent transactions found for this wallet and token.\n"
+        
+        await update.message.reply_text(
+            formatted_message,
+            parse_mode="HTML",
+            reply_markup=ReplyKeyboardRemove(),
+            disable_web_page_preview=True
+        )
+    else:
+        await update.message.reply_text(
+            f"Error fetching transaction data: {response.status_code}",
+            reply_markup=ReplyKeyboardRemove()
+        )
 
 def main() -> None:
     """Run the bot."""
@@ -827,8 +898,9 @@ def main() -> None:
     application.add_handler(CommandHandler("tokenbalance", get_token_balance)) #complete
     application.add_handler(CommandHandler("transfer", transfer_trx)) #complete
     application.add_handler(CommandHandler("swap", swap)) #needs fixing
-    application.add_handler(CommandHandler("getmemecoininfo", get_meme_coin_info)) #inprogress
-    application.add_handler(CommandHandler("getwalletinfo", get_wallet_info)) #inprogress
+    application.add_handler(CommandHandler("getmemecoininfo", get_meme_coin_info)) #complete
+    application.add_handler(CommandHandler("getwalletinfo", get_wallet_info)) #complete
+    application.add_handler(CommandHandler("getwallettransfers", get_wallet_transfers)) #complete
     
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES, read_timeout=600, write_timeout=600, pool_timeout=600, connect_timeout=600, timeout=600)
