@@ -22,7 +22,14 @@ You can refer to your `requirements.txt` file for this.
 ## Installation
 
 1. Clone the repository: `git clone https://github.com/adeel09/TronTelegramBot.git`
-2. Install dependencies: `pip install -r requirements.txt`
+2. Create virtual env and install requirements.txt
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
 3. Set up your environment variables: `cp .env.example .env` and fill in the necessary values
 
 ## Usage
@@ -36,8 +43,10 @@ Go to you bot on telegram and send /start to get the usage instructions.
 - Use /balance to check your total balance in TRX.
 - Use /tokenbalance <token_symbol>/<token_name> to check your balance of tokens.
 - Use /transfer <receiver_address> <amount> to transfer tokens to another address.
-- Use /swap <currency1> <currency2> <amount> to swap tokens. (inprogress)
-- Use /copytrade <address> to start copy trading the transactions of the specified address. (inprogress)
+- Use /swap <currency1> <currency2> <amount> to swap tokens. (inprogress/need fix)
+- Use /getmemecoininfo <address> to get the info of the memecoins.
+- Use /getwalletinfo <address> to get your wallet info.
+- Use /getwallettransfers <address> <token_address> to get an wallet address's tokens transfers.
 
 ## Contributing
 
