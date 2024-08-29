@@ -13,7 +13,7 @@ from httpx import AsyncClient, Timeout, Limits
 from tronpy.providers.async_http import AsyncHTTPProvider
 from tronpy.defaults import CONF_NILE, CONF_MAINNET
 from tronpy import AsyncTron
-from datetime import datetime
+from datetime import datetime, timezone
 
 from telegram.ext import (
     Application,
@@ -195,7 +195,7 @@ async def generate_trx_address(update: Update, context: ContextTypes.DEFAULT_TYP
             await update.message.reply_text(
             f"🔐 <strong>Wallet Info</strong> 🔐\n\n"
             f"📍 <strong>Address:</strong> \n{account['base58check_address']}\n\n"
-            f"�� <strong>Private Key:</strong> \n{account['private_key']}\n\n"
+            f" <strong>Private Key:</strong> \n{account['private_key']}\n\n"
             f"⚠️ <strong>Disclaimer:</strong>\n Please store your private key and mnemonic securely. "
             "Anyone with access to these can control your funds. Do not share this information with anyone.",
             parse_mode="HTML"
@@ -675,24 +675,28 @@ async def get_meme_coin_info(update: Update, context: ContextTypes.DEFAULT_TYPE)
                 formatted_message += f"""
 💰 <strong>Token Name:</strong> {name}
 🔖 <strong>Symbol:</strong> {symbol.upper()}
+
 📈 <strong>Total Supply:</strong> {total_supply} (with decimals: {total_supply_with_decimals})
+
 📝 <strong>Description:</strong> {token_desc}
+
 👥 <strong>Holders Count:</strong> {holders_count}
 
-🔄 <strong>Transfers in 24h:</strong> {transfer_24h}
 🔢 <strong>Total Transfers:</strong> {transfer_num}
+🔄 <strong>Transfers in 24h:</strong> {transfer_24h}
 📉 <strong>Volume (24h):</strong> {volume_24h}
 
 💲 <strong>Price:</strong>
 TRX: {price_in_trx}
 USD: {price_in_usd}
 
-💧 <strong>Liquidity:</strong> {liquidity}
+💧 <strong>Liquidity:</strong> 
+{liquidity}
 24h: ${liquidity_24h}
 24h Rate: ${liquidity_24h_rate}
 
 📊 <strong>JustSwap Volume (24h):</strong> {just_swap_volume_24h}
-Rate: {just_swap_volume_24h_rate}
+Rate: {just_swap_volume_24h_rate * 100}%
 
 🕒 <strong>Issue Date:</strong> {issue_time}
 
@@ -704,6 +708,7 @@ Rate: {just_swap_volume_24h_rate}
 📧 <strong>Email:</strong> {email}
 💻 <strong>GitHub:</strong> {git_hub}
 📄 <strong>White Paper:</strong> {white_paper}
+
 🏠 <strong>Issue Address:</strong> {issue_address}
 
 📈 <strong>Gain:</strong> {gain * 100}%
@@ -726,7 +731,7 @@ Rate: {just_swap_volume_24h_rate}
                         price_usd = price_point.get('priceUsd', 'N/A')
                         if timestamp != 'N/A':
                             # Convert Unix timestamp to datetime
-                            formatted_time = datetime.utcfromtimestamp(int(timestamp)).strftime('%Y-%m-%d %H:%M:%S UTC')
+                            formatted_time = datetime.fromtimestamp(int(timestamp), tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')
                         else:
                             formatted_time = 'N/A'
                         formatted_message += f"   • {formatted_time}: {price_usd} USD\n"
