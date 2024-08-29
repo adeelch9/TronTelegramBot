@@ -6,16 +6,12 @@
 
 
 * requests
-* pandas
-* emoji
 * python-dotenv
 * python-telegram-bot
-* web3
 * mnemonic
 * aiosqlite
 * httpcore[asyncio]
 * tronpy
-* trontxsize
 
 You can refer to your `requirements.txt` file for this.
 
