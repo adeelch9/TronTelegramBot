@@ -53,6 +53,7 @@ async def start_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         "- Use /swap <currency1> <currency2> <amount> to swap tokens.\n"
         "- Use /copytrade <address> to start copy trading the transactions of the specified address.\n"
         "- Use /getmemecoininfo <address> to get the info of the memecoins.\n"
+        "- Use /getwalletinfo <address> to get your wallet info.\n"
     )
     await update.message.reply_text(msg)
 
@@ -749,6 +750,71 @@ Rate: {just_swap_volume_24h_rate * 100}%
         parse_mode="HTML",
         reply_markup=ReplyKeyboardRemove()
     )
+    
+async def get_wallet_info(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not context.args:
+        await update.message.reply_text(
+            "Usage: /getwalletinfo <address>",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+
+    wallet_address = context.args[0]
+    
+    if not client.is_address(wallet_address):
+        await update.message.reply_text(
+            "Invalid address",
+            reply_markup=ReplyKeyboardRemove(),
+        )
+        return
+    
+    url = f"https://apilist.tronscanapi.com/api/account/tokens?address={wallet_address}&start=0&limit=20&hidden=0&show=0&sortType=0&sortBy=0&token="
+    
+    response = requests.get(url)
+    
+    if response.status_code == 200:
+        data = response.json()
+        tokens = data.get('data', [])
+        
+        formatted_message = f"🔐 <strong>Wallet Info for {wallet_address}</strong> 🔐\n\n"
+        
+        if tokens:
+            formatted_message += "<strong>Token Holdings:</strong>\n\n"
+            total_value_usd = 0
+            for token in tokens:
+                token_name = token.get('tokenName', 'N/A')
+                token_abbr = token.get('tokenAbbr', 'N/A')
+                balance = float(token.get('balance', 0)) / 10**int(token.get('tokenDecimal', 6))
+                token_type = token.get('tokenType', 'N/A')
+                token_price_usd = token.get('tokenPriceInUsd', 0)
+                token_price_trx = token.get('tokenPriceInTrx', 0)
+                amount_usd = token.get('amountInUsd', 0)
+                total_value_usd += amount_usd
+                
+                formatted_message += f"🪙 <strong>{token_name.upper()} ({token_abbr.upper()})</strong>\n"
+                formatted_message += f"   Balance: {balance:,.6f} {token_abbr.upper()}\n"
+                formatted_message += f"   Type: {token_type.upper()}\n"
+                if token_price_usd:
+                    formatted_message += f"   Price: ${token_price_usd:.6f} USD / {token_price_trx:.6f} TRX\n"
+                if amount_usd:
+                    formatted_message += f"   Value: ${amount_usd:.2f} USD\n"
+                formatted_message += "\n"
+            
+            formatted_message += f"💰 <strong>Total Portfolio Value:</strong> ${total_value_usd:.2f} USD\n\n"
+        else:
+            formatted_message += "No tokens found in this wallet.\n"
+        
+        
+        await update.message.reply_text(
+            formatted_message,
+            parse_mode="HTML",
+            reply_markup=ReplyKeyboardRemove()
+        )
+    else:
+        await update.message.reply_text(
+            f"Error fetching wallet data: {response.status_code}",
+            reply_markup=ReplyKeyboardRemove()
+        )
 
 def main() -> None:
     """Run the bot."""
@@ -762,6 +828,7 @@ def main() -> None:
     application.add_handler(CommandHandler("transfer", transfer_trx)) #complete
     application.add_handler(CommandHandler("swap", swap)) #needs fixing
     application.add_handler(CommandHandler("getmemecoininfo", get_meme_coin_info)) #inprogress
+    application.add_handler(CommandHandler("getwalletinfo", get_wallet_info)) #inprogress
     
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES, read_timeout=600, write_timeout=600, pool_timeout=600, connect_timeout=600, timeout=600)
